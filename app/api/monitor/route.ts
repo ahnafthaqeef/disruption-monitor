@@ -1,8 +1,6 @@
 import Groq from 'groq-sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-
 interface SerperResult {
   title: string
   snippet: string
@@ -29,6 +27,7 @@ async function fetchNews(query: string): Promise<SerperResult[]> {
 }
 
 export async function POST(req: NextRequest) {
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
   const { route } = await req.json()
 
   if (!route) {
