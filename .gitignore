@@ -4,3 +4,10 @@ node_modules/
 out/
 
 .vercel
+
+# credentials
+*.pem
+*.key
+credentials.json
+token.json
+service_account*.json
