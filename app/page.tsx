@@ -1,391 +1,269 @@
-'use client'
+import Link from 'next/link'
 
-import { useState } from 'react'
-
-interface NewsItem {
-  title: string
-  snippet: string
-  source: string
-  date: string
-}
-
-interface MonitorResult {
-  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  risk_score: number
-  summary: string
-  active_disruptions: string[]
-  affected_commodities: string[]
-  impact_assessment: string
-  mitigations: string[]
-  outlook: string
-  news: NewsItem[]
-}
-
-interface RouteOverview {
-  route: string
-  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  risk_score: number
-  one_liner: string
-}
-
-const ROUTES = [
-  'Strait of Malacca',
-  'Port Klang, Malaysia',
-  'South China Sea',
-  'Red Sea / Suez Canal',
-  'Trans-Pacific (Asia → US West Coast)',
-  'Asia → Europe (via Suez)',
-  'Port of Singapore',
-  'Port of Shanghai',
-  'Lombok Strait, Indonesia',
-  'Taiwan Strait',
-]
-
-const RISK_COLORS: Record<string, string> = {
-  LOW: 'text-green-400 bg-green-950/30 border-green-900/40',
-  MEDIUM: 'text-yellow-400 bg-yellow-950/30 border-yellow-900/40',
-  HIGH: 'text-orange-400 bg-orange-950/30 border-orange-900/40',
-  CRITICAL: 'text-red-400 bg-red-950/30 border-red-900/40',
-}
-
-const RISK_BADGE: Record<string, string> = {
-  LOW: 'bg-green-900/50 text-green-300',
-  MEDIUM: 'bg-yellow-900/50 text-yellow-300',
-  HIGH: 'bg-orange-900/50 text-orange-300',
-  CRITICAL: 'bg-red-900/50 text-red-300',
-}
-
-const RISK_DOT: Record<string, string> = {
-  LOW: 'bg-green-400',
-  MEDIUM: 'bg-yellow-400',
-  HIGH: 'bg-orange-400',
-  CRITICAL: 'bg-red-400',
-}
-
-const RISK_BAR: Record<string, string> = {
-  LOW: 'bg-green-500',
-  MEDIUM: 'bg-yellow-500',
-  HIGH: 'bg-orange-500',
-  CRITICAL: 'bg-red-500',
-}
-
-export default function DisruptionMonitor() {
-  const [route, setRoute] = useState(ROUTES[0])
-  const [custom, setCustom] = useState('')
-  const [useCustom, setUseCustom] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<MonitorResult | null>(null)
-  const [error, setError] = useState('')
-  const [lastChecked, setLastChecked] = useState('')
-
-  const [overviewLoading, setOverviewLoading] = useState(false)
-  const [overview, setOverview] = useState<RouteOverview[] | null>(null)
-  const [overviewError, setOverviewError] = useState('')
-
-  const target = useCustom && custom.trim() ? custom.trim() : route
-
-  const handleMonitor = async (routeOverride?: string) => {
-    const routeToUse = routeOverride ?? target
-    setLoading(true)
-    setResult(null)
-    setError('')
-    if (routeOverride) {
-      setRoute(routeOverride)
-      setUseCustom(false)
-    }
-    try {
-      const res = await fetch('/api/monitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ route: routeToUse }),
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setResult(data)
-      setLastChecked(new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' }))
-    } catch {
-      setError('Monitor check failed. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-    // Scroll to detail section
-    setTimeout(() => {
-      document.getElementById('detail')?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
-  }
-
-  const handleScanAll = async () => {
-    setOverviewLoading(true)
-    setOverview(null)
-    setOverviewError('')
-    try {
-      const res = await fetch('/api/overview')
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setOverview(data.routes || [])
-    } catch {
-      setOverviewError('Scan failed. Please try again.')
-    } finally {
-      setOverviewLoading(false)
-    }
-  }
-
-  const riskCounts = overview
-    ? {
-        CRITICAL: overview.filter(r => r.risk_level === 'CRITICAL').length,
-        HIGH: overview.filter(r => r.risk_level === 'HIGH').length,
-        MEDIUM: overview.filter(r => r.risk_level === 'MEDIUM').length,
-        LOW: overview.filter(r => r.risk_level === 'LOW').length,
-      }
-    : null
-
+export default function Landing() {
   return (
-    <main className="min-h-screen bg-gray-950 text-white p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-950 text-white">
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-sm font-bold">SC</div>
-            <h1 className="text-2xl font-bold">Supply Chain Disruption Monitor</h1>
-          </div>
-          <p className="text-gray-400">AI-powered real-time risk assessment for APAC trade routes and logistics corridors.</p>
-        </div>
-
-        {/* APAC Overview Section */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-semibold">APAC Route Overview</p>
-              <p className="text-sm text-gray-500">Scan all 10 key routes simultaneously</p>
+      {/* Top nav */}
+      <header className="sticky top-0 z-30 bg-gray-950/95 backdrop-blur-md border-b border-gray-800/70">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-gradient-to-br from-orange-500 to-orange-700 rounded-lg flex items-center justify-center text-xs font-black tracking-tight shadow-lg shadow-orange-900/40">
+              SC
             </div>
-            <button
-              onClick={handleScanAll}
-              disabled={overviewLoading}
-              className="bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap"
+            <span className="font-bold text-sm tracking-tight">Supply Chain Monitor</span>
+            <span className="hidden sm:inline text-gray-600 text-xs font-medium">— APAC</span>
+          </div>
+          <nav className="flex items-center gap-4 text-sm">
+            <a href="#routes" className="text-gray-400 hover:text-white transition-colors hidden sm:block">Routes</a>
+            <a href="#how" className="text-gray-400 hover:text-white transition-colors hidden sm:block">How it works</a>
+            <Link
+              href="/app"
+              className="bg-orange-600 hover:bg-orange-500 rounded-lg px-4 py-1.5 font-semibold text-sm shadow-lg shadow-orange-900/30 transition-colors"
             >
-              {overviewLoading ? 'Scanning...' : 'Scan All Routes'}
-            </button>
-          </div>
-
-          {overviewLoading && (
-            <div className="text-center py-8 text-gray-400">
-              <div className="inline-block w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mb-3" />
-              <p className="text-sm">Assessing all APAC routes with AI...</p>
-            </div>
-          )}
-
-          {overviewError && <p className="text-red-400 text-sm text-center py-4">{overviewError}</p>}
-
-          {overview && (
-            <>
-              {/* Summary bar */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map(level => (
-                  <div key={level} className={`rounded-xl p-3 border text-center ${RISK_COLORS[level]}`}>
-                    <p className="text-xl font-bold">{riskCounts![level]}</p>
-                    <p className="text-xs opacity-70">{level}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Route grid */}
-              <div className="grid sm:grid-cols-2 gap-2">
-                {overview.map((r, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleMonitor(r.route)}
-                    className="text-left bg-gray-800/50 hover:bg-gray-800 border border-gray-700 hover:border-gray-600 rounded-xl p-4 transition-all group"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="text-sm font-medium text-white group-hover:text-orange-300 transition-colors leading-tight">{r.route}</p>
-                      <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${RISK_BADGE[r.risk_level]}`}>
-                        {r.risk_level}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 bg-gray-700 rounded-full h-1.5">
-                        <div
-                          className={`h-1.5 rounded-full ${RISK_BAR[r.risk_level]}`}
-                          style={{ width: `${r.risk_score}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-500">{r.risk_score}/100</span>
-                    </div>
-                    <p className="text-xs text-gray-500 leading-relaxed">{r.one_liner}</p>
-                    <p className="text-xs text-orange-500 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Click for full analysis →</p>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {!overview && !overviewLoading && (
-            <div className="border border-dashed border-gray-700 rounded-xl p-6 text-center">
-              <p className="text-gray-500 text-sm">Click &quot;Scan All Routes&quot; to get a live risk snapshot of all APAC trade corridors.</p>
-            </div>
-          )}
+              Try Demo →
+            </Link>
+          </nav>
         </div>
+      </header>
 
-        {/* Single Route Deep Dive */}
-        <div id="detail" className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-          <p className="font-semibold mb-1">Deep Dive Analysis</p>
-          <p className="text-sm text-gray-500 mb-4">Get a detailed breakdown for a specific route — news, impact, and mitigations.</p>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <input type="radio" id="preset" checked={!useCustom} onChange={() => setUseCustom(false)} className="accent-orange-500" />
-              <label htmlFor="preset" className="text-sm text-gray-300">Preset routes</label>
-            </div>
-            <select
-              value={route}
-              onChange={e => setRoute(e.target.value)}
-              disabled={useCustom}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
-            >
-              {ROUTES.map(r => <option key={r}>{r}</option>)}
-            </select>
-
-            <div className="flex items-center gap-3">
-              <input type="radio" id="custom" checked={useCustom} onChange={() => setUseCustom(true)} className="accent-orange-500" />
-              <label htmlFor="custom" className="text-sm text-gray-300">Custom route or region</label>
-            </div>
-            <input
-              type="text"
-              value={custom}
-              onChange={e => setCustom(e.target.value)}
-              disabled={!useCustom}
-              placeholder="e.g. Port of Tanjung Pelepas, Banda Sea, Asia-Australia lane..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 disabled:opacity-50"
-            />
+      {/* Hero */}
+      <section className="px-6 pt-20 pb-24">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-orange-950/50 ring-1 ring-orange-800/50 rounded-full px-3 py-1 mb-7">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
+            </span>
+            <span className="text-xs text-orange-300 font-medium tracking-wide">Live · 10 APAC corridors monitored</span>
           </div>
 
-          <button
-            onClick={() => handleMonitor()}
-            disabled={loading || (useCustom && !custom.trim())}
-            className="mt-5 w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-xl py-3.5 font-semibold transition-colors"
+          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6 leading-[1.05]">
+            Know which trade routes
+            <span className="block bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent mt-2">
+              are about to cost you money
+            </span>
+          </h1>
+
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            AI scans live news across 10 APAC trade corridors — Strait of Malacca, Red Sea, Taiwan Strait, and more — and tells you which lanes are at risk, why, and what to do about it. No login required.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/app"
+              className="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 active:bg-orange-700 rounded-xl px-7 py-3.5 font-semibold text-base shadow-lg shadow-orange-900/30 transition-all duration-150 inline-flex items-center justify-center gap-2"
+            >
+              Scan APAC Routes
+              <span>→</span>
+            </Link>
+            <Link
+              href="/app#detail"
+              className="w-full sm:w-auto bg-gray-800/70 hover:bg-gray-700/70 ring-1 ring-gray-700/60 rounded-xl px-7 py-3.5 font-medium text-base text-gray-300 hover:text-white transition-all duration-150 inline-flex items-center justify-center gap-2"
+            >
+              Deep Dive a Single Route
+            </Link>
+          </div>
+
+          <p className="text-xs text-gray-600 mt-6">
+            Free demo · pulls live news at scan time · risk scores generated by AI in ~20s
+          </p>
+        </div>
+      </section>
+
+      {/* Routes monitored */}
+      <section id="routes" className="px-6 py-16 border-t border-gray-800/60">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">What gets monitored</p>
+            <h2 className="text-3xl font-bold tracking-tight">10 APAC corridors out of the box</h2>
+            <p className="text-gray-500 mt-3 max-w-xl mx-auto">Custom routes too — Tanjung Pelepas, Banda Sea, any lane you care about. Just type it in.</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            {[
+              'Strait of Malacca',
+              'Port Klang',
+              'South China Sea',
+              'Red Sea / Suez',
+              'Trans-Pacific',
+              'Asia → Europe',
+              'Port of Singapore',
+              'Port of Shanghai',
+              'Lombok Strait',
+              'Taiwan Strait',
+            ].map(r => (
+              <div key={r} className="bg-gray-900 ring-1 ring-gray-800 rounded-xl px-3 py-3 text-center hover:ring-orange-700/40 transition-colors">
+                <span className="text-sm text-gray-300 font-medium">{r}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What you get */}
+      <section className="px-6 py-16 border-t border-gray-800/60">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">What you get</p>
+            <h2 className="text-3xl font-bold tracking-tight">Five outputs per scan</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              {
+                title: 'Risk Score & Level',
+                desc: 'A single 0–100 score and LOW/MEDIUM/HIGH/CRITICAL classification — calibrated for ops directors and risk committees.',
+                color: 'from-red-500/20 to-red-700/10',
+                ring: 'ring-red-800/40',
+                emoji: '🔥',
+              },
+              {
+                title: 'Active Disruptions',
+                desc: 'Specific events affecting the route right now — strikes, weather, geopolitics, congestion, regulatory shifts.',
+                color: 'from-orange-500/20 to-orange-700/10',
+                ring: 'ring-orange-800/40',
+                emoji: '⚠️',
+              },
+              {
+                title: 'Affected Commodities',
+                desc: 'Which goods flowing through this lane are at risk — semiconductors, palm oil, electronics, automotive.',
+                color: 'from-amber-500/20 to-amber-700/10',
+                ring: 'ring-amber-800/40',
+                emoji: '📦',
+              },
+              {
+                title: 'Impact Assessment',
+                desc: 'Plain-language read on cost, transit-time, and inventory implications. Briefing-ready, no fluff.',
+                color: 'from-yellow-500/20 to-yellow-700/10',
+                ring: 'ring-yellow-800/40',
+                emoji: '📊',
+              },
+              {
+                title: 'Live News Sources',
+                desc: 'The actual headlines and snippets that drove the score — auditable, dated, attributed to source.',
+                color: 'from-blue-500/20 to-blue-700/10',
+                ring: 'ring-blue-800/40',
+                emoji: '📰',
+              },
+              {
+                title: 'Mitigations & Outlook',
+                desc: 'Numbered actions you can take — reroute, build buffer stock, hedge contracts — plus 7–14 day forward view.',
+                color: 'from-emerald-500/20 to-emerald-700/10',
+                ring: 'ring-emerald-800/40',
+                emoji: '✅',
+              },
+            ].map(f => (
+              <div key={f.title} className={`relative bg-gray-900 rounded-2xl p-5 ring-1 ${f.ring} hover:ring-gray-600/70 transition-all overflow-hidden`}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${f.color} opacity-30 pointer-events-none`} />
+                <div className="relative">
+                  <div className="text-2xl mb-3">{f.emoji}</div>
+                  <h3 className="text-base font-bold text-white mb-1.5">{f.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="px-6 py-16 border-t border-gray-800/60 bg-gray-950/60">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">How it works</p>
+            <h2 className="text-3xl font-bold tracking-tight">Three modes, one engine</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              { n: 1, title: 'Network Snapshot', desc: 'One click scans all 10 corridors in parallel. Returns a colour-coded grid of risk levels — perfect for daily standups.' },
+              { n: 2, title: 'Route Deep Dive', desc: 'Pick a single route and get the full report: live news, disruption signals, commodities at risk, mitigations.' },
+              { n: 3, title: 'Custom Lane', desc: 'Type in any lane or region — Tanjung Pelepas, Banda Sea, Asia-Australia. The AI assesses it the same way.' },
+            ].map(s => (
+              <div key={s.n} className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-6">
+                <div className="w-10 h-10 bg-orange-600/20 ring-1 ring-orange-500/40 rounded-xl flex items-center justify-center text-orange-400 font-bold text-lg mb-4">
+                  {s.n}
+                </div>
+                <h3 className="text-base font-bold mb-2">{s.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Use cases */}
+      <section className="px-6 py-16 border-t border-gray-800/60">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">Who it&apos;s for</p>
+            <h2 className="text-3xl font-bold tracking-tight">Built for the people who get the panicked email at 6pm</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              {
+                title: 'Procurement & Supply Planners',
+                body: 'Spot lane risk before it becomes a stockout. Brief the CFO with audit-trail-ready impact assessments instead of vibes.',
+              },
+              {
+                title: 'Logistics Ops Managers',
+                body: 'Reroute earlier, build buffers earlier, hedge contracts earlier. Stop being the last to know about a Suez incident.',
+              },
+              {
+                title: 'Risk & Insurance Teams',
+                body: 'Continuous APAC risk visibility without a Bloomberg terminal. Quantify exposure for renewals and reinsurance discussions.',
+              },
+              {
+                title: 'C-Suite & Board Reporting',
+                body: 'Generate weekly disruption snapshots in 30 seconds — risk levels, hotspots, mitigations — paste straight into the deck.',
+              },
+            ].map(u => (
+              <div key={u.title} className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-6">
+                <h3 className="text-base font-bold mb-2 text-white">{u.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{u.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="px-6 py-20 border-t border-gray-800/60">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
+            Stop guessing about your trade lanes
+          </h2>
+          <p className="text-gray-400 mb-8 max-w-xl mx-auto">
+            One click, ~20 seconds, full APAC network read. Free demo, no login, no credit card.
+          </p>
+          <Link
+            href="/app"
+            className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 rounded-xl px-8 py-4 font-semibold text-base shadow-lg shadow-orange-900/30 transition-all"
           >
-            {loading ? 'Scanning for disruptions...' : `Analyse: ${target}`}
-          </button>
-          {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
+            Launch Demo
+            <span>→</span>
+          </Link>
         </div>
+      </section>
 
-        {/* Loading */}
-        {loading && (
-          <div className="text-center text-gray-400 py-12">
-            <div className="inline-block w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
-            <p>Scanning news and assessing risk for</p>
-            <p className="text-white font-medium mt-1">{target}</p>
+      {/* Footer */}
+      <footer className="border-t border-gray-800/60">
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 bg-orange-600 rounded-md flex items-center justify-center text-[10px] font-black">
+              SC
+            </div>
+            <p className="text-xs text-gray-500 font-medium">Supply Chain Disruption Monitor</p>
           </div>
-        )}
-
-        {/* Results */}
-        {result && (
-          <div className="space-y-4">
-
-            {/* Risk Level Header */}
-            <div className={`rounded-2xl border p-6 ${RISK_COLORS[result.risk_level]}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider opacity-70 mb-1">Risk Level — {target}</p>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${RISK_DOT[result.risk_level]} animate-pulse`} />
-                    <p className="text-3xl font-bold">{result.risk_level}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-4xl font-bold">{result.risk_score}<span className="text-lg font-normal opacity-60">/100</span></p>
-                  <p className="text-xs opacity-60 mt-1">Checked at {lastChecked} MYT</p>
-                </div>
-              </div>
-              <div className="w-full bg-gray-800/50 rounded-full h-2">
-                <div className={`h-2 rounded-full transition-all ${RISK_BAR[result.risk_level]}`} style={{ width: `${result.risk_score}%` }} />
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Situation Summary</p>
-              <p className="text-gray-200 leading-relaxed">{result.summary}</p>
-            </div>
-
-            {/* Active Disruptions + Affected Commodities */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                <p className="text-sm font-semibold text-red-400 mb-3">Active Disruptions</p>
-                {result.active_disruptions.length > 0 ? (
-                  <ul className="space-y-2">
-                    {result.active_disruptions.map((d, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-gray-300">
-                        <span className="text-red-400 mt-0.5 shrink-0">●</span>
-                        <span>{d}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No major active disruptions detected.</p>
-                )}
-              </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                <p className="text-sm font-semibold text-yellow-400 mb-3">Affected Commodities</p>
-                <div className="flex flex-wrap gap-2">
-                  {result.affected_commodities.map((c, i) => (
-                    <span key={i} className="bg-yellow-900/30 border border-yellow-900/50 text-yellow-300 text-xs px-3 py-1 rounded-full">{c}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Impact Assessment */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-              <p className="text-sm font-semibold text-gray-300 mb-2">Impact Assessment</p>
-              <p className="text-sm text-gray-400 leading-relaxed">{result.impact_assessment}</p>
-            </div>
-
-            {/* News Headlines */}
-            {result.news.length > 0 && (
-              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                <p className="text-sm font-semibold text-gray-300 mb-3">Recent News</p>
-                <div className="space-y-3">
-                  {result.news.map((n, i) => (
-                    <div key={i} className="border-b border-gray-800 last:border-0 pb-3 last:pb-0">
-                      <p className="text-sm text-white font-medium mb-1">{n.title}</p>
-                      <p className="text-xs text-gray-500">{n.snippet}</p>
-                      <div className="flex gap-3 mt-1">
-                        <span className="text-xs text-gray-600">{n.source}</span>
-                        {n.date && <span className="text-xs text-gray-600">{n.date}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Mitigations */}
-            <div className="bg-green-950/20 border border-green-900/40 rounded-2xl p-5">
-              <p className="text-sm font-semibold text-green-400 mb-3">Mitigation Strategies</p>
-              <ul className="space-y-2">
-                {result.mitigations.map((m, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-300">
-                    <span className="text-green-400 shrink-0">→</span>
-                    <span>{m}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Outlook */}
-            <div className="bg-blue-950/20 border border-blue-900/40 rounded-2xl p-5">
-              <p className="text-sm font-semibold text-blue-400 mb-2">Outlook</p>
-              <p className="text-sm text-gray-300 leading-relaxed">{result.outlook}</p>
-            </div>
-
-            <button onClick={() => handleMonitor()} className="w-full bg-gray-800 hover:bg-gray-700 rounded-xl py-3 text-sm font-medium transition-colors">
-              Re-check Now
-            </button>
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <a href="https://aibizmy.com" target="_blank" rel="noopener" className="hover:text-gray-300 transition-colors">aibizmy.com</a>
+            <span>·</span>
+            <span>AI-powered · APAC focused</span>
           </div>
-        )}
-      </div>
-    </main>
+        </div>
+      </footer>
+    </div>
   )
 }
